@@ -1,6 +1,6 @@
 Name                        Contributions
 Abigiya Tegene            Course Module Developer
-Abigiya Yonas
+Abigiya Yonas             GPA and Analytics developer
 Dibora Endris	
 Abel Birhane
 Abubeker Mohammed

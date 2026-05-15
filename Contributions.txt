@@ -1,7 +1,7 @@
 Name                        Contributions
 Abigiya Tegene            Course Module Developer
 Abigiya Yonas             GPA and Analytics developer
-Dibora Endris	
+Dibora Endris	            Code Merger and Program Coordinator
 Abel Birhane
 Abubeker Mohammed
 Amanuel Alemu

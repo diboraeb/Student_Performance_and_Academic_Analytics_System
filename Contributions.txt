@@ -2,7 +2,7 @@ Name                        Contributions
 Abigiya Tegene            Course Module Developer
 Abigiya Yonas             GPA and Analytics developer
 Dibora Endris	            Code Merger and Program Coordinator
-Abel Birhane
-Abubeker Mohammed
-Amanuel Alemu
-Akleshiya Abrham
+Abel Birhane              Backend & DataBase Admin 
+Abubeker Mohammed         UI Menu and Testing
+Amanuel Alemu             Student Module Developer
+Akleshiya Abrham          CRUD operations developer

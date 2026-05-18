@@ -1,9 +1,7 @@
 #include <iostream>
 #include <mysql.h>
-#include <vector>
 #include <string>
 #include <iomanip>
-#include <algorithm>
 #include <cstdlib>
 
 using namespace std;
@@ -30,14 +28,14 @@ struct Grade {
     double score;
 };
 
-//defining the global variables
+// defining the global variables
 
 MYSQL* conn;
 
 string systemUsername = "admin";
 string systemPassword = "1234";
 
-//establish the database connection
+// establish the database connection
 
 void connectDatabase() {
 
@@ -49,7 +47,7 @@ void connectDatabase() {
         exit(1);
     }
 
-    conn = mysql_real_connect(conn,"localhost","root","","university_db",3306,NULL,0);
+    conn = mysql_real_connect(conn,"localhost","root","","spaas_db",3306,NULL,0);
 
     if(conn) {
 
@@ -63,8 +61,7 @@ void connectDatabase() {
         exit(1);
     }
 }
-
-//login function
+// login function
 
 bool login() {
 
@@ -97,8 +94,7 @@ bool login() {
 
     return false;
 }
-
-// helper functions that we use to check if input student and course id exists
+// helper functions to check if student and course id exist
 
 bool studentExists(int id) {
 
@@ -126,7 +122,6 @@ bool courseExists(int id) {
 
         return false;
     }
-
     MYSQL_RES* res = mysql_store_result(conn);
 
     bool exists = mysql_num_rows(res) > 0;
@@ -136,45 +131,37 @@ bool courseExists(int id) {
     return exists;
 }
 
-//for automatic gpa update
+
+// for automatic gpa update, it's reused everywhere GPA needs recalculation
 void updateStudentGPA(int studentId) {
 
     string query = "SELECT Score FROM Grades WHERE SID = " + to_string(studentId);
 
-    if(mysql_query(conn, query.c_str()) != 0) {
-
+    if (mysql_query(conn, query.c_str()) != 0) {
         cout << "Error Calculating GPA!\n";
         return;
     }
 
-    MYSQL_RES* res = mysql_store_result(conn);
-
+    MYSQL_RES *res = mysql_store_result(conn);
     MYSQL_ROW row;
 
     double totalPoints = 0.0;
     int totalCourses = 0;
 
-    while((row = mysql_fetch_row(res))) {
-
+    while ((row = mysql_fetch_row(res))) {
         double score = atof(row[0]);
-
         double gradePoint;
 
-        if(score >= 90)
+        if (score >= 90)
             gradePoint = 4.0;
-
-        else if(score >= 80)
+        else if (score >= 80)
             gradePoint = 3.5;
-
-        else if(score >= 70)
+        else if (score >= 70)
             gradePoint = 3.0;
-
-        else if(score >= 60)
+        else if (score >= 60)
             gradePoint = 2.5;
-
-        else if(score >= 50)
+        else if (score >= 50)
             gradePoint = 2.0;
-
         else
             gradePoint = 0.0;
 
@@ -186,17 +173,19 @@ void updateStudentGPA(int studentId) {
 
     double gpa = 0.0;
 
-    if(totalCourses > 0) {
-
+    if (totalCourses > 0) {
         gpa = totalPoints / totalCourses;
     }
+    if (gpa > 4.0) {
+        gpa = 4.0;
+    }
 
-    string updateQuery ="UPDATE Students SET GPA = " +to_string(gpa) +" WHERE ID = " +to_string(studentId);
+    string updateQuery = "UPDATE Students SET GPA = " + to_string(gpa) + " WHERE ID = " + to_string(studentId);
 
     mysql_query(conn, updateQuery.c_str());
 }
 
-//function to add student information and store to the database
+// function to add student information and store to the database
 
 void addStudent() {
 
@@ -247,7 +236,7 @@ void addStudent() {
     }
 }
 
-//function to view students information
+// function to view students information
 
 void viewStudents() {
 
@@ -273,33 +262,19 @@ void viewStudents() {
 
     cout << "\n================ STUDENT LIST ================\n\n";
 
-    cout << left
-         << setw(10) << "ID"
-         << setw(25) << "NAME"
-         << setw(10) << "AGE"
-         << setw(25) << "DEPARTMENT"
-         << setw(15) << "GPA"
-         << endl;
+    cout << left<< setw(10) << "ID"<< setw(25) << "NAME"<< setw(10) << "AGE"<< setw(25) << "DEPARTMENT"<< setw(15) << "GPA"<< endl;
 
     cout << "--------------------------------------------------------------------------\n";
 
     while((row = mysql_fetch_row(res))) {
 
-        cout << left
-             << setw(10) << row[0]
-             << setw(25) << row[1]
-             << setw(10) << row[2]
-             << setw(25) << row[3]
-             << setw(15) << fixed
-             << setprecision(2)
-             << atof(row[4])
-             << endl;
+        cout << left<< setw(10) << row[0]<< setw(25) << row[1]<< setw(10) << row[2]<< setw(25) << row[3]<< setw(15) << fixed<< setprecision(2)<< atof(row[4])<< endl;
     }
 
     mysql_free_result(res);
 }
+// function to update student informations
 
-//function to update specific student information
 void updateStudent() {
 
     int id;
@@ -318,93 +293,144 @@ void updateStudent() {
     cout << "1. Update Name\n";
     cout << "2. Update Age\n";
     cout << "3. Update Department\n";
-    cout << "4. Update GPA\n";
-    cout << "5. Update All\n";
+    cout << "4. Update GPA (via Course Scores)\n";
+    cout << "5. Update All (Name, Age, Department)\n";
     cout << "Enter choice: ";
     cin >> choice;
 
     cin.ignore();
 
     string query;
+    bool executeQuery = true;
 
     switch (choice) {
 
-        case 1: {
-            string name;
-            cout << "Enter New Name: ";
-            getline(cin, name);
-
-            query = "UPDATE Students SET Name = '" + name +
-                    "' WHERE ID = " + to_string(id);
-            break;
-        }
-
-        case 2: {
-            int age;
-            cout << "Enter New Age: ";
-            cin >> age;
-
-            query = "UPDATE Students SET Age = " + to_string(age) + "' WHERE ID = " + to_string(id);
-            break;
-        }
-
-        case 3: {
-            string dept;
-            cout << "Enter New Department: ";
-            getline(cin, dept);
-
-            query = "UPDATE Students SET Dept = '" + dept + "' WHERE ID = " + to_string(id);
-            break;
-        }
-
-        case 4: {
-            double gpa;
-            cout << "Enter New GPA: ";
-            cin >> gpa;
-
-            query = "UPDATE Students SET GPA = " + to_string(gpa) + " WHERE ID = " + to_string(id);
-            break;
-        }
-
-        case 5: {
-            string name, dept;
-            int age;
-            double gpa;
-
-            cout << "Enter New Name: ";
-            getline(cin, name);
-
-            cout << "Enter New Age: ";
-            cin >> age;
-            cin.ignore();
-
-            cout << "Enter New Department: ";
-            getline(cin, dept);
-
-            cout << "Enter New GPA: ";
-            cin >> gpa;
-
-            query = "UPDATE Students SET "
-                    "Name = '" + name +
-                    "', Age = " + to_string(age) +
-                    ", Dept = '" + dept +
-                    "', GPA = " + to_string(gpa) +
-                    " WHERE ID = " + to_string(id);
-            break;
-        }
-
-        default:
-            cout << "Invalid Choice!\n";
-            return;
+    case 1: {
+        string name;
+        cout << "Enter New Name: ";
+        getline(cin, name);
+        query = "UPDATE Students SET Name = '" + name + "' WHERE ID = " + to_string(id);
+        break;
     }
 
-    if (mysql_query(conn, query.c_str()) == 0) {
-        cout << "Student Updated Successfully!\n";
-    } else {
-        cout << "Error: " << mysql_error(conn) << endl;
+    case 2: {
+        int age;
+        cout << "Enter New Age: ";
+        cin >> age;
+        query = "UPDATE Students SET Age = " + to_string(age) + " WHERE ID = " + to_string(id);
+        break;
+    }
+
+    case 3: {
+        string dept;
+        cout << "Enter New Department: ";
+        getline(cin, dept);
+        query = "UPDATE Students SET Dept = '" + dept + "' WHERE ID = " + to_string(id);
+        break;
+    }
+
+    case 4: {
+
+        executeQuery = false;
+
+        int numCourses;
+        cout << "How many course scores do you want to update? ";
+        cin >> numCourses;
+
+        if (numCourses <= 0) {
+            cout << "Invalid number!\n";
+            break;
+        }
+
+        bool anyUpdated = false;
+
+        for (int i = 0; i < numCourses; i++) {
+
+            int courseId;
+            double newScore;
+
+            cout << "\n--- Course " << (i + 1) << " ---\n";
+            cout << "Enter Course ID: ";
+            cin >> courseId;
+
+            if (!courseExists(courseId)) {
+                cout << "Course Not Found! Skipping...\n";
+                continue;
+            }
+
+            cout << "Enter New Score: ";
+            cin >> newScore;
+
+            if (newScore < 0 || newScore > 100) {
+                cout << "Invalid Grade! Score must be between 0 and 100.\n";
+                continue;
+            }
+
+            string updateGradeQuery =
+                "UPDATE Grades SET Score = " + to_string(newScore) +
+                " WHERE SID = " + to_string(id) +
+                " AND CID = " + to_string(courseId);
+
+            if (mysql_query(conn, updateGradeQuery.c_str()) == 0) {
+                if (mysql_affected_rows(conn) == 0) {
+                    cout << "Grade Record Not Found for Course " << courseId << "! Skipping...\n";
+                } else {
+                    cout << "Score Updated for Course " << courseId << "!\n";
+                    anyUpdated = true;
+                }
+            } else {
+                cout << "Error: " << mysql_error(conn) << endl;
+            }
+        }
+
+        if (anyUpdated) {
+            updateStudentGPA(id);
+            cout << "\nGPA Updated Automatically!\n";
+        } else {
+            cout << "\nNo scores were updated. GPA unchanged.\n";
+        }
+
+        break;
+    }
+
+    case 5: {
+        string name, dept;
+        int age;
+
+        cout << "Enter New Name: ";
+        getline(cin, name);
+
+        cout << "Enter New Age: ";
+        cin >> age;
+        cin.ignore();
+
+        cout << "Enter New Department: ";
+        getline(cin, dept);
+
+        query = "UPDATE Students SET "
+                "Name = '" + name +
+                "', Age = " + to_string(age) +
+                ", Dept = '" + dept +
+                "' WHERE ID = " + to_string(id);
+        break;
+    }
+
+    default:
+        cout << "Invalid Choice!\n";
+        return;
+    }
+
+
+    if (executeQuery && !query.empty()) {
+        if (mysql_query(conn, query.c_str()) == 0) {
+            cout << "Student Updated Successfully!\n";
+        } else {
+            cout << "Error: " << mysql_error(conn) << endl;
+        }
     }
 }
-//function to delete student information
+
+// function to delete student information
 void deleteStudent() {
 
     int id;
@@ -431,12 +457,9 @@ void deleteStudent() {
 
     else {
 
-        cout << "Error: "
-             << mysql_error(conn)
-             << endl;
+        cout << "Error: "<< mysql_error(conn)<< endl;
     }
 }
-
 // function to search for students by using id
 
 void searchStudent() {
@@ -463,10 +486,7 @@ void searchStudent() {
         cout << "Name: " << row[1] << endl;
         cout << "Age: " << row[2] << endl;
         cout << "Department: " << row[3] << endl;
-        cout << "GPA: " << fixed
-             << setprecision(2)
-             << atof(row[4])
-             << endl;
+        cout << "GPA: " << fixed<< setprecision(2)<< atof(row[4])<< endl;
     }
 
     else {
@@ -476,6 +496,7 @@ void searchStudent() {
 
     mysql_free_result(res);
 }
+
 
 // function to add course and store in the database
 
@@ -518,8 +539,7 @@ void addCourse() {
         cout << "Error: "<< mysql_error(conn)<< endl;
     }
 }
-
-//function to view course information
+// function to view course information
 
 void viewCourses() {
 
@@ -533,76 +553,83 @@ void viewCourses() {
 
     cout << "\n========== COURSES ==========\n";
 
-    cout << left
-         << setw(15) << "COURSE ID"
-         << setw(30) << "COURSE NAME"
-         << setw(15) << "CREDITS"
-         << endl;
+    cout << left<< setw(15) << "COURSE ID"<< setw(30) << "COURSE NAME"<< setw(15) << "CREDITS"<< endl;
 
     cout << "----------------------------------------------------------\n";
 
     while((row = mysql_fetch_row(res))) {
 
-        cout << left
-             << setw(15) << row[0]
-             << setw(30) << row[1]
-             << setw(15) << row[2]
-             << endl;
+        cout << left<< setw(15) << row[0]<< setw(30) << row[1]<< setw(15) << row[2]<< endl;
     }
 
     mysql_free_result(res);
 }
-
-//function to record a student's grade of course
-
 void recordGrade() {
 
     Grade g;
+    int numCourses;
 
     cout << "\n========== RECORD GRADE ==========\n";
 
     cout << "Enter Student ID: ";
     cin >> g.studentId;
 
-    if(!studentExists(g.studentId)) {
-
+    if (!studentExists(g.studentId)) {
         cout << "Student Not Found!\n";
         return;
     }
 
-    cout << "Enter Course ID: ";
-    cin >> g.courseId;
+    cout << "How many courses do you want to record grades for? ";
+    cin >> numCourses;
 
-    if(!courseExists(g.courseId)) {
-
-        cout << "Course Not Found!\n";
+    if (numCourses <= 0) {
+        cout << "Invalid number!\n";
         return;
     }
 
-    cout << "Enter Score: ";
-    cin >> g.score;
+    bool anyRecorded = false;
 
-    string query =
-    "INSERT INTO Grades(SID, CID, Score) VALUES("
-    + to_string(g.studentId) + ", "
-    + to_string(g.courseId) + ", "
-    + to_string(g.score) + ")";
+    for (int i = 0; i < numCourses; i++) {
 
-    if(mysql_query(conn, query.c_str()) == 0) {
+        cout << "\n--- Course " << (i + 1) << " ---\n";
+        cout << "Enter Course ID: ";
+        cin >> g.courseId;
 
-        updateStudentGPA(g.studentId);
+        if (!courseExists(g.courseId)) {
+            cout << "Course Not Found! Skipping...\n";
+            continue;
+        }
 
-        cout << "Grade Recorded Successfully!\n";
-        cout << "GPA Updated Automatically!\n";
+        cout << "Enter Score: ";
+        cin >> g.score;
+
+        if (g.score < 0 || g.score > 100) {
+            cout << "Invalid Grade! Score must be between 0 and 100.\n";
+            continue;
+        }
+
+        string query =
+            "INSERT INTO Grades(SID, CID, Score) VALUES("
+            + to_string(g.studentId) + ", "
+            + to_string(g.courseId) + ", "
+            + to_string(g.score) + ")";
+
+        if (mysql_query(conn, query.c_str()) == 0) {
+            cout << "Grade Recorded Successfully for Course " << g.courseId << "!\n";
+            anyRecorded = true;
+        } else {
+            cout << "Error: "<<mysql_error(conn) << endl;
+        }
     }
 
-    else {
-
-        cout << "Error: "<< mysql_error(conn)<< endl;
+    // Auto-recalculate gpa after all grades are recorded
+    if (anyRecorded) {
+        updateStudentGPA(g.studentId);
+        cout << "\nGPA Updated Automatically!\n";
     }
 }
 
-//function to view grades of every students and of every courses
+// function to view grades of every students and of every courses
 
 void viewGrades() {
 
@@ -610,8 +637,7 @@ void viewGrades() {
 
     mysql_query(conn, query.c_str());
 
-    MYSQL_RES* res = mysql_store_result(conn);
-
+    MYSQL_RES *res = mysql_store_result(conn);
     MYSQL_ROW row;
 
     cout << "\n========== GRADES ==========\n";
@@ -624,20 +650,14 @@ void viewGrades() {
 
     cout << "---------------------------------------------\n";
 
-    while((row = mysql_fetch_row(res))) {
-
-        cout << left
-             << setw(15) << row[0]
-             << setw(15) << row[1]
-             << setw(15) << row[2]
-             << endl;
+    while ((row = mysql_fetch_row(res))) {
+        cout << left<<setw(15)<<row[0]<<setw(15)<<row[1]<<setw(15)<<row[2]<<endl;
     }
 
     mysql_free_result(res);
 }
 
-//function that ranks students based on their gpa
-
+// function that ranks students based on their gpa
 void rankStudents() {
 
     string query =
@@ -645,7 +665,7 @@ void rankStudents() {
 
     mysql_query(conn, query.c_str());
 
-    MYSQL_RES* res = mysql_store_result(conn);
+    MYSQL_RES *res = mysql_store_result(conn);
 
     MYSQL_ROW row;
 
@@ -653,64 +673,49 @@ void rankStudents() {
 
     cout << "\n========== STUDENT RANKING ==========\n";
 
-    cout << left
-         << setw(10) << "RANK"
-         << setw(25) << "NAME"
-         << setw(15) << "GPA"
-         << endl;
+    cout << left<< setw(10) << "RANK"<< setw(25) << "NAME"<<setw(15) << "GPA"<< endl;
 
     cout << "------------------------------------------------\n";
 
-    while((row = mysql_fetch_row(res))) {
-
-        cout << left
-             << setw(10) << rank++
-             << setw(25) << row[0]
-             << setw(15) << fixed
-             << setprecision(2)
-             << atof(row[1])
-             << endl;
+    while ((row = mysql_fetch_row(res))) {
+        cout << left<< setw(10) << rank++<< setw(25) << row[0]<< setw(15) << fixed<< setprecision(2)<< atof(row[1])<< endl;
     }
 
     mysql_free_result(res);
 }
 
-//function that shows weak subject or <50 average score of students
+// function that shows weak subject or <50 average score of students
 void weakSubjects() {
 
     string query =
-    "SELECT Students.Name, Courses.Name, Grades.Score "
-    "FROM Grades "
-    "JOIN Students ON Grades.SID = Students.ID "
-    "JOIN Courses ON Grades.CID = Courses.CID "
-    "WHERE Grades.Score < 50";
+        "SELECT Students.Name, Courses.Name, Grades.Score "
+        "FROM Grades "
+        "JOIN Students ON Grades.SID = Students.ID "
+        "JOIN Courses ON Grades.CID = Courses.CID "
+        "WHERE Grades.Score < 50";
 
     mysql_query(conn, query.c_str());
 
-    MYSQL_RES* res = mysql_store_result(conn);
+    MYSQL_RES *res = mysql_store_result(conn);
 
     MYSQL_ROW row;
 
     cout << "\n========== WEAK SUBJECTS ==========\n";
 
-    while((row = mysql_fetch_row(res))) {
-
-        cout << "Student: "<< row[0]<< " | Course: "<< row[1]<< " | Score: "<< row[2]<< endl;
+    while ((row = mysql_fetch_row(res))) {
+        cout << "Student: "<< row[0]<<" | Course: "<< row[1]<< " | Score: "<<row[2]<<endl;
     }
 
     mysql_free_result(res);
 }
 
-
 // main menu function
-
 
 void mainMenu() {
 
     int choice;
 
     do {
-
         cout << "\n====================================\n";
         cout << " STUDENT PERFORMANCE TRACKER\n";
         cout << "====================================\n";
@@ -731,64 +736,51 @@ void mainMenu() {
         cout << "Enter Choice: ";
         cin >> choice;
 
-        switch(choice) {
-
+        switch (choice) {
         case 1:
             addStudent();
             break;
-
         case 2:
             viewStudents();
             break;
-
         case 3:
             updateStudent();
             break;
-
         case 4:
             deleteStudent();
             break;
-
         case 5:
             searchStudent();
             break;
-
         case 6:
             addCourse();
             break;
-
         case 7:
             viewCourses();
             break;
-
         case 8:
             recordGrade();
             break;
-
         case 9:
             viewGrades();
             break;
-
         case 10:
             rankStudents();
             break;
-
         case 11:
             weakSubjects();
             break;
-
         case 12:
             cout << "Exiting Program...\n";
             break;
-
         default:
             cout << "Invalid Choice!\n";
         }
 
-    } while(choice != 12);
+    } while (choice != 12);
 }
 
-//main function
+// main function
 
 int main() {
 
@@ -803,3 +795,4 @@ int main() {
 
     return 0;
 }
+

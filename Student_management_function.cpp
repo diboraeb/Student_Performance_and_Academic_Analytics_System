@@ -68,7 +68,7 @@ void updateStudent() {
     cout << "1. Update Name\n";
     cout << "2. Update Age\n";
     cout << "3. Update Department\n";
-    cout << "4. Update GPA\n";
+    cout << "4. Update GPA(via Course Scores)\n";
     cout << "5. Update All\n";
     cout << "Enter choice: ";
     cin >> choice;
@@ -107,14 +107,70 @@ void updateStudent() {
             break;
         }
 
-        case 4: {
-            double gpa;
-            cout << "Enter New GPA: ";
-            cin >> gpa;
+        
+    case 4: {
 
-            query = "UPDATE Students SET GPA = " + to_string(gpa) + " WHERE ID = " + to_string(id);
+        executeQuery = false;
+
+        int numCourses;
+        cout << "How many course scores do you want to update? ";
+        cin >> numCourses;
+
+        if (numCourses <= 0) {
+            cout << "Invalid number!\n";
             break;
         }
+
+        bool anyUpdated = false;
+
+        for (int i = 0; i < numCourses; i++) {
+
+            int courseId;
+            double newScore;
+
+            cout << "\n--- Course " << (i + 1) << " ---\n";
+            cout << "Enter Course ID: ";
+            cin >> courseId;
+
+            if (!courseExists(courseId)) {
+                cout << "Course Not Found! Skipping...\n";
+                continue;
+            }
+
+            cout << "Enter New Score: ";
+            cin >> newScore;
+
+            if (newScore < 0 || newScore > 100) {
+                cout << "Invalid Grade! Score must be between 0 and 100.\n";
+                continue;
+            }
+
+            string updateGradeQuery =
+                "UPDATE Grades SET Score = " + to_string(newScore) +
+                " WHERE SID = " + to_string(id) +
+                " AND CID = " + to_string(courseId);
+
+            if (mysql_query(conn, updateGradeQuery.c_str()) == 0) {
+                if (mysql_affected_rows(conn) == 0) {
+                    cout << "Grade Record Not Found for Course " << courseId << "! Skipping...\n";
+                } else {
+                    cout << "Score Updated for Course " << courseId << "!\n";
+                    anyUpdated = true;
+                }
+            } else {
+                cout << "Error: " << mysql_error(conn) << endl;
+            }
+        }
+
+        if (anyUpdated) {
+            updateStudentGPA(id);
+            cout << "\nGPA Updated Automatically!\n";
+        } else {
+            cout << "\nNo scores were updated. GPA unchanged.\n";
+        }
+
+        break;
+    }
 
         case 5: {
             string name, dept;
